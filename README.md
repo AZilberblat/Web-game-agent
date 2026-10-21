@@ -43,3 +43,13 @@ pytest                                   # fake game + scripted brain, no Chrome
 - **`SeleniumBrowser` has not been run against real Chrome here** (container had chromedriver 147 vs Chrome 141, no download access). `tests/test_selenium_integration.py` is skipped when no matching driver exists; run it where one does. The `AnthropicBrain` prompts have only been tested with a stubbed client.
 - Resume via a *new* browser loses game state (the agent re-observes and adapts); the library call accepts a live browser.
 - Verification after the final in-budget action is skipped if the 5-minute budget is already spent, so a win on the very last moment can go undetected.
+
+## Real-game test: 2048 (served locally)
+```
+npm pack 2048-html && tar xzf 2048-html-*.tgz && (cd package && python3 -m http.server 8048 --bind 127.0.0.1 &)
+CHROME_BINARY=/opt/pw-browsers/chromium-1194/chrome-linux/chrome ANTHROPIC_API_KEY=... python -m gameagent run --browser playwright \
+  --name 2048 --url http://127.0.0.1:8048/index.html --cue "a tile showing 128 is on the board" \
+  --dom-text "128" --instructions "Arrow keys slide all tiles; equal tiles merge."
+```
+"Level 1" for 2048 is defined here as reaching a 128 tile (the real 2048 tile is too long for 100 actions). The page has external links;
+Playwright adapter smoke-tested: a click on one is aborted, logged as `network_block`, and the page restored.
