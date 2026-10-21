@@ -1,0 +1,8 @@
+<!doctype html><meta charset="utf-8"><title>Tile game</title>
+<style>body{margin:0;font:20px sans-serif}#s,#b,#w{display:none;padding:20px}.t{position:absolute;width:80px;height:80px;background:#ccc}.lit{background:gold}</style>
+<div id="s">Instructions: press START, then click the gold tile 3 times.<br><button id="go" style="font-size:30px;position:absolute;left:100px;top:120px">START</button></div>
+<div id="b">Hits: <span id="n">0</span>/3 <a href="https://example.org/" style="position:absolute;left:300px;top:400px">free prizes</a>
+<div class="t lit" id="tile" style="left:300px;top:200px"></div></div>
+<div id="w"><h1>LEVEL 1 COMPLETE</h1></div>
+<script>let n=0;s.style.display='block';go.onclick=()=>{s.style.display='none';b.style.display='block'};
+tile.onclick=()=>{n++;document.getElementById('n').textContent=n;if(n>=3){b.style.display='none';w.style.display='block'}}</script>
