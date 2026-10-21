@@ -102,3 +102,61 @@ class SeleniumBrowser:
 
     def close(self) -> None:
         self.d.quit()
+
+
+class PlaywrightBrowser:
+    """Same interface on Playwright's Chromium. Network layer: every request to a non-allowed host is aborted
+    via context.route, and any popup page is closed. Used where no matching chromedriver is available."""
+
+    def __init__(self, start_url: str, allowed_hosts: tuple[str, ...], viewport: tuple[int, int] = (1024, 768),
+                 headless: bool = True, binary: str | None = None):
+        from urllib.parse import urlparse
+
+        from playwright.sync_api import sync_playwright
+
+        self.start_url, self.hosts = start_url, tuple(h.lower() for h in allowed_hosts)
+        self.blocked_requests: list[str] = []
+        self._pw = sync_playwright().start()
+        self.b = self._pw.chromium.launch(headless=headless, executable_path=binary or os.environ.get("CHROME_BINARY"),
+                                          args=["--no-sandbox"])
+        self.ctx = self.b.new_context(viewport={"width": viewport[0], "height": viewport[1]})
+
+        def route(r):
+            if (urlparse(r.request.url).hostname or "").lower() in self.hosts or r.request.url.startswith(("data:", "blob:")):
+                r.continue_()
+            else:
+                self.blocked_requests.append(r.request.url)
+                r.abort()
+
+        self.ctx.route("**/*", route)
+        self.page = self.ctx.new_page()
+        self.page.goto(start_url)
+
+    def screenshot(self) -> bytes:
+        return self.page.screenshot()
+
+    def click(self, x: int, y: int) -> None:
+        self.page.mouse.click(x, y)
+
+    def press_key(self, key: str) -> None:
+        self.page.keyboard.press(key if key != "Space" else " ")
+
+    def current_url(self) -> str:
+        # an aborted off-site navigation leaves the page on the game URL; surface it as a network block
+        if self.blocked_requests:
+            return "chrome-error://blocked/" + self.blocked_requests.pop()
+        return self.page.url
+
+    def page_text(self) -> str:
+        return self.page.inner_text("body")
+
+    def restore(self) -> None:
+        for p in self.ctx.pages[1:]:
+            p.close()
+        self.blocked_requests.clear()
+        if self.page.url != self.start_url:
+            self.page.goto(self.start_url)
+
+    def close(self) -> None:
+        self.b.close()
+        self._pw.stop()
